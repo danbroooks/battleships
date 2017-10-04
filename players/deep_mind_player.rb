@@ -22,6 +22,10 @@ class DeepMindPlayer
       state == :miss
     end
 
+    def occupied?
+      state == :occupied
+    end
+
     def to_a
       [x,y]
     end
@@ -32,13 +36,59 @@ class DeepMindPlayer
   end
 
   def new_game
-    [
-      [5, 0, 5, :across],
-      [5, 1, 4, :across],
-      [5, 2, 3, :across],
-      [5, 3, 3, :across],
-      [5, 4, 2, :across]
-    ]
+    generate_ships([5, 4, 3, 3, 2], board(10, 10))
+  end
+
+  def board(height, width)
+    zip_coordinates(
+      (0...height).map do |x|
+        (0...width).map do |y|
+          :unknown
+        end
+      end
+    )
+  end
+
+  def generate_ships(ships, state)
+    if ships.empty?
+      []
+    else
+      size = ships.first
+      position_x = rand(9 - size)
+      position_y = rand(9 - size)
+
+      if check_squares_unoccupied(position_x, position_y, size, :across, state)
+        ship = [ position_y, position_x, size, :across ]
+        [ship] + generate_ships(ships.drop(1), update_state(position_x, position_y, size, :across, state))
+      else
+        puts "Squares occupied between #{position_x}, #{position_y}, retrying... (#{size})"
+        generate_ships(ships, state)
+      end
+    end
+  end
+
+  def check_squares_unoccupied(x, y, size, direction, state)
+    area = state.select do |slot|
+      [
+        slot.x >= x,
+        slot.x < x + size,
+        slot.y >= y,
+        slot.y < y + size
+      ].all?
+    end
+
+    area.select(&:occupied?).size == 0
+  end
+
+  def update_state(x, y, size, direction, state)
+    state.map do |slot|
+      if direction == :across && slot.x == x && slot.y >= y && slot.y < y + size ||
+         direction == :down   && slot.y == y && slot.x >= x && slot.x < x + size
+        Coordinate.new(slot.x, slot.y, :occupied)
+      else
+        slot
+      end
+    end
   end
 
   def take_turn(state, ships_remaining)
@@ -90,7 +140,6 @@ class DeepMindPlayer
 
   def create_slot(state, x, y)
     if pick(state, x) != nil && pick(state[x], y) != nil
-      p state[x][y]
       Coordinate.new(x, y, state[x][y])
     else
       nil
