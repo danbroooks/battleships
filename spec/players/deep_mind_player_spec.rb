@@ -4,7 +4,7 @@ RSpec.describe DeepMindPlayer do
   it 'can transform all the coordinates and map them to an object' do
     expect(subject.zip_coordinates([[:unknown]]).size).to be(1)
   end
-
+  
   it 'can work out the neighbors of a cell' do
     state = [
       [:unknown, :unknown, :unknown],
