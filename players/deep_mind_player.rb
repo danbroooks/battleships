@@ -54,21 +54,36 @@ class DeepMindPlayer
     )
   end
 
-  def generate_ships(ships, state, buffer = 0)
+  def generate_ships(ships, state, buffer = 4.0)
     if ships.empty?
       []
     else
       size = ships.first
-      x = rand(9 - size)
-      y = rand(9 - size)
-      direction = rand(2) == 1 ? :down : :across
 
-      if check_squares_unoccupied(x, y, size, direction, state, buffer)
+      free_down = state.select(&:unknown?).select do |sq|
+        sq.y <= size && check_squares_unoccupied(sq.x, sq.y, size, :down, state, buffer.ceil)
+      end.map do |sq|
+        [:down, sq]
+      end
+
+      free_across = state.select(&:unknown?).select do |sq|
+        sq.x <= size && check_squares_unoccupied(sq.x - size, sq.y, size, :across, state, buffer.ceil)
+      end.map do |sq|
+        [:across, sq]
+      end
+
+      available = free_down + free_across
+
+      if available.size > 0
+        direction, square = available.shuffle.first
+        x = square.x
+        y = square.y
+        puts "Added ship of size #{size}, using buffer #{buffer.ceil}"
         ship = [ x, y, size, direction ]
-        [ship] + generate_ships(ships.drop(1), update_state(x, y, size, direction, state), buffer)
+        [ship] + generate_ships(ships.drop(1), update_state(x, y, size, direction, state))
       else
-        puts "Squares occupied between #{x}, #{y}, retrying... (#{size})"
-        generate_ships(ships, state, buffer)
+        puts "Squares occupied between #{x}, #{y}, retrying... (#{buffer.ceil})"
+        generate_ships(ships, state, [0,buffer - 1].max)
       end
     end
   end
