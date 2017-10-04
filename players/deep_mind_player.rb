@@ -1,5 +1,9 @@
 class DeepMindPlayer
 
+  def self.slot(x, y, val, nb = [])
+    Coordinate.new(x, y, val, nb)
+  end
+
   class Coordinate
     attr_reader :x, :y, :state, :neighbors
 
@@ -36,7 +40,8 @@ class DeepMindPlayer
   end
 
   def new_game
-    generate_ships([5, 4, 3, 3, 2], board(10, 10))
+    s = generate_ships([5, 4, 3, 3, 2], board(10, 10))
+    p s
   end
 
   def board(height, width)
@@ -56,10 +61,11 @@ class DeepMindPlayer
       size = ships.first
       position_x = rand(9 - size)
       position_y = rand(9 - size)
+      direction = rand(2) == 1 ? :down : :across
 
-      if check_squares_unoccupied(position_x, position_y, size, :across, state)
-        ship = [ position_x, position_y, size, :across ]
-        [ship] + generate_ships(ships.drop(1), update_state(position_x, position_y, size, :across, state))
+      if check_squares_unoccupied(position_x, position_y, size, direction, state)
+        ship = [ position_x, position_y, size, direction ]
+        [ship] + generate_ships(ships.drop(1), update_state(position_x, position_y, size, direction, state))
       else
         puts "Squares occupied between #{position_x}, #{position_y}, retrying... (#{size})"
         generate_ships(ships, state)
@@ -69,15 +75,26 @@ class DeepMindPlayer
 
   def check_squares_unoccupied(x, y, size, direction, state)
     area = state.select do |slot|
-      [
-        slot.x >= x,
-        slot.x < x + size,
-        slot.y >= y,
-        slot.y < y + size
-      ].all?
+      if direction == :down
+        slot_is_contained_in([x, y], [x, y + size], slot)
+      else
+        slot_is_contained_in([x, y], [x + size, y], slot)
+      end
     end
 
     area.select(&:occupied?).size == 0
+  end
+
+  def slot_is_contained_in(from, to, slot)
+    from_x, from_y = from
+    to_x, to_y = to
+
+    [
+      slot.x >= from_x,
+      slot.x <= to_x,
+      slot.y >= from_y,
+      slot.y <= to_y,
+    ].all?
   end
 
   def update_state(x, y, size, direction, state)
