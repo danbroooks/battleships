@@ -73,13 +73,12 @@ class DeepMindPlayer
     end
   end
 
-  def check_squares_unoccupied(x, y, size, direction, state)
+  def check_squares_unoccupied(x, y, size, direction, state, buffer = 0)
+    from = [ x - buffer, y - buffer ]
+    to = direction == :down ? [ x + buffer, y + size + buffer ] : [ x + size + buffer, y + buffer ]
+
     area = state.select do |slot|
-      if direction == :down
-        slot_is_contained_in([x, y], [x, y + size], slot)
-      else
-        slot_is_contained_in([x, y], [x + size, y], slot)
-      end
+      slot_is_contained_in(from, to, slot)
     end
 
     area.select(&:occupied?).size == 0
