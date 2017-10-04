@@ -54,26 +54,26 @@ class DeepMindPlayer
     )
   end
 
-  def generate_ships(ships, state)
+  def generate_ships(ships, state, buffer = 0)
     if ships.empty?
       []
     else
       size = ships.first
-      position_x = rand(9 - size)
-      position_y = rand(9 - size)
+      x = rand(9 - size)
+      y = rand(9 - size)
       direction = rand(2) == 1 ? :down : :across
 
-      if check_squares_unoccupied(position_x, position_y, size, direction, state)
-        ship = [ position_x, position_y, size, direction ]
-        [ship] + generate_ships(ships.drop(1), update_state(position_x, position_y, size, direction, state))
+      if check_squares_unoccupied(x, y, size, direction, state, buffer)
+        ship = [ x, y, size, direction ]
+        [ship] + generate_ships(ships.drop(1), update_state(x, y, size, direction, state), buffer)
       else
-        puts "Squares occupied between #{position_x}, #{position_y}, retrying... (#{size})"
-        generate_ships(ships, state)
+        puts "Squares occupied between #{x}, #{y}, retrying... (#{size})"
+        generate_ships(ships, state, buffer)
       end
     end
   end
 
-  def check_squares_unoccupied(x, y, size, direction, state, buffer = 0)
+  def check_squares_unoccupied(x, y, size, direction, state, buffer)
     from = [ x - buffer, y - buffer ]
     to = direction == :down ? [ x + buffer, y + size + buffer ] : [ x + size + buffer, y + buffer ]
 
