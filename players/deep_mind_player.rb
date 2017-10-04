@@ -58,7 +58,7 @@ class DeepMindPlayer
       position_y = rand(9 - size)
 
       if check_squares_unoccupied(position_x, position_y, size, :across, state)
-        ship = [ position_y, position_x, size, :across ]
+        ship = [ position_x, position_y, size, :across ]
         [ship] + generate_ships(ships.drop(1), update_state(position_x, position_y, size, :across, state))
       else
         puts "Squares occupied between #{position_x}, #{position_y}, retrying... (#{size})"
@@ -82,8 +82,8 @@ class DeepMindPlayer
 
   def update_state(x, y, size, direction, state)
     state.map do |slot|
-      if direction == :across && slot.x == x && slot.y >= y && slot.y < y + size ||
-         direction == :down   && slot.y == y && slot.x >= x && slot.x < x + size
+      if direction == :down   && slot.x == x && slot.y >= y && slot.y < y + size ||
+         direction == :across && slot.y == y && slot.x >= x && slot.x < x + size
         Coordinate.new(slot.x, slot.y, :occupied)
       else
         slot
@@ -119,7 +119,7 @@ class DeepMindPlayer
 
   def guess(move)
     p ({ :move => move })
-    move.reverse
+    move
   end
 
   def pick_random(state)
@@ -131,16 +131,16 @@ class DeepMindPlayer
   end
 
   def zip_coordinates(state)
-    state.map.with_index do |col, x| 
-      col.map.with_index do |value, y|
+    state.map.with_index do |col, y|
+      col.map.with_index do |value, x|
        Coordinate.new(x, y, value, neighbors(state, x, y))
       end
     end.flatten(1)
   end
 
   def create_slot(state, x, y)
-    if pick(state, x) != nil && pick(state[x], y) != nil
-      Coordinate.new(x, y, state[x][y])
+    if pick(state, y) != nil && pick(state[y], x) != nil
+      Coordinate.new(x, y, state[y][x])
     else
       nil
     end
