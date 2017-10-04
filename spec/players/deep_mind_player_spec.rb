@@ -11,11 +11,16 @@ RSpec.describe DeepMindPlayer do
       [:miss, :unknown, :hit],
       [:unknown, :miss, :unknown]
     ]
-    expect(subject.neighbors(state, 1, 1)).to eq([
-      { x: 0, y: 1, state: :unknown },
-      { x: 1, y: 0, state: :miss },
-      { x: 2, y: 1, state: :miss },
-      { x: 1, y: 2, state: :hit},
+
+    neighbors = subject.neighbors(state, 1, 1).map do |co|
+      [co.x, co.y, co.state]
+    end
+
+    expect(neighbors).to eq([
+      [0, 1, :unknown],
+      [1, 0, :miss],
+      [2, 1, :miss],
+      [1, 2, :hit],
     ])
   end
 end

@@ -1,4 +1,24 @@
 class DeepMindPlayer
+
+  class Coordinate
+    attr_reader :x, :y, :state
+
+    def initialize(x, y, state, neighbors = [])
+      @x = x
+      @y = y
+      @state = state
+      @neighbors = neighbors
+    end
+
+    def unknown?
+      state == :unknown
+    end
+
+    def to_a
+      [x,y]
+    end
+  end
+
   def name
     "Deep Mind"
   end
@@ -14,33 +34,24 @@ class DeepMindPlayer
   end
 
   def take_turn(state, ships_remaining)
-    move = zip_coordinates(state).select do |square|
-      square[:state] == :unknown
-    end.shuffle.first
-
-    [move[:x], move[:y]]
+    zip_coordinates(state)
+      .select(&:unknown?)
+      .shuffle
+      .first
+      .to_a
   end
 
   def zip_coordinates(state)
     state.map.with_index do |row, x| 
-      row.map.with_index do |value, y| 
-        {
-          x: x,
-          y: y,
-          state: value,
-          neighbors: neighbors(state, x, y)
-        }
+      row.map.with_index do |value, y|
+       Coordinate.new(x, y, value, neighbors(state, x, y))
       end
     end.flatten(1)
   end
 
   def create_slot(state, x, y)
     if state[x] != nil && state[x][y] != nil
-      {
-        x: x,
-        y: y,
-        state: state[x][y]
-      }
+      Coordinate.new(x, y, state[x][y])
     else
       nil
     end
