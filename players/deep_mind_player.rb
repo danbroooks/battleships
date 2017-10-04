@@ -28,8 +28,30 @@ class DeepMindPlayer
           x: x,
           y: y,
           state: value,
+          neighbors: neighbors(state, x, y)
         }
       end
     end.flatten(1)
+  end
+
+  def create_slot(state, x, y)
+    if state[x] != nil && state[x][y] != nil
+      {
+        x: x,
+        y: y,
+        state: state[x][y]
+      }
+    else
+      nil
+    end
+  end
+
+  def neighbors(state, x, y)
+    [
+      create_slot(state, x - 1, y),
+      create_slot(state, x, y - 1),
+      create_slot(state, x + 1, y),
+      create_slot(state, x, y + 1),
+    ].compact
   end
 end
