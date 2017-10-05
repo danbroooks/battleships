@@ -36,7 +36,7 @@ class DeepMindPlayer
   end
 
   def name
-    "Deep Mind (╯°□°）╯︵ ┻━┻"
+    "Deep Mind (unoptimized)"
   end
 
   def new_game
@@ -123,16 +123,12 @@ class DeepMindPlayer
   end
 
   def take_turn(state, ships_remaining)
-    guess(consider_options(state, ships_remaining).first.to_a)
-  end
-
-  def consider_options(state, ships_remaining)
     if hit_pairs(state).size > 0
-      hit_pairs(state)
+      guess(hit_pairs(state).first.to_a)
     elsif hit_neighbors(state).size > 0
-      hit_neighbors(state)
+      guess(hit_neighbors(state).first.to_a)
     else
-      pick_random(state)
+      guess(pick_random(state))
     end
   end
 
@@ -188,6 +184,8 @@ class DeepMindPlayer
     zip_coordinates(state)
       .select(&:unknown?)
       .shuffle
+      .first
+      .to_a
   end
 
   def zip_coordinates(state)
