@@ -30,6 +30,10 @@ class DeepMindPlayer
       state == :occupied
     end
 
+    def odd_slot?
+      x % 2 == 0 && y % 2 != 0 || x % 2 != 0 && y % 2 == 0
+    end
+
     def to_a
       [x,y]
     end
@@ -191,9 +195,7 @@ class DeepMindPlayer
   end
 
   def pick_random(state)
-    zip_coordinates(state)
-      .select(&:unknown?)
-      .shuffle
+    zip_coordinates(state).select(&:odd_slot?).select(&:unknown?).shuffle
   end
 
   def zip_coordinates(state)
