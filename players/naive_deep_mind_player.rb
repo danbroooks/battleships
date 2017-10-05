@@ -1,4 +1,4 @@
-class DeepMindPlayer
+class NaiveDeepMindPlayer
 
   def self.slot(x, y, val, nb = [])
     Coordinate.new(x, y, val, nb)
@@ -36,12 +36,11 @@ class DeepMindPlayer
   end
 
   def name
-    "Deep Mind"
+    "Naive Deep Mind"
   end
 
   def new_game
-    s = generate_ships([5, 4, 3, 3, 2], board(10, 10))
-    p s
+    generate_ships([5, 4, 3, 3, 2], board(10, 10))
   end
 
   def board(height, width)
@@ -123,61 +122,32 @@ class DeepMindPlayer
   end
 
   def take_turn(state, ships_remaining)
-    if hit_pairs(state).size > 0
-      guess(hit_pairs(state).first.to_a)
-    elsif hit_neighbors(state).size > 0
-      guess(hit_neighbors(state).first.to_a)
+    priority = zip_coordinates(state)
+      .select(&:hit?)
+      .map do |slot|
+        same_row = slot.neighbors.select do |adj|
+          adj.x == slot.x
+        end
+        same_col = slot.neighbors.select do |adj|
+          adj.y == slot.y
+        end
+
+        [
+          same_row.select(&:unknown?),
+          same_col.select(&:unknown?),
+        ]
+      end
+      .flatten
+
+    if priority.size > 0
+      guess(priority.first.to_a)
     else
       guess(pick_random(state))
     end
   end
 
   def guess(move)
-    p ({ :move => move })
     move
-  end
-
-  def rows(state)
-    zip_coordinates(state).group_by(&:y)
-  end
-
-  def columns(state)
-    zip_coordinates(state).group_by(&:x)
-  end
-
-  def hit_pairs(state)
-    r = rows(state).map do |_, row|
-      hits = row.select(&:hit?)
-      if hits.size > 1
-        min = hits.min_by(&:x)
-        max = hits.max_by(&:x)
-       [
-          create_slot(state, min.x - 1, min.y),
-          create_slot(state, max.x + 1, max.y),
-       ].compact.select(&:unknown?)
-      end
-    end.compact
-
-    c = columns(state).map do |_, col|
-      hits = col.select(&:hit?)
-      if hits.size > 1
-        min = hits.min_by(&:y)
-        max = hits.max_by(&:y)
-        [
-          create_slot(state, min.x, min.y - 1),
-          create_slot(state, max.x, max.y + 1),
-        ].compact.select(&:unknown?)
-      end
-    end.compact
-
-    (r + c).flatten.shuffle
-  end
-
-  def hit_neighbors(state)
-    zip_coordinates(state)
-      .select(&:hit?)
-      .map { |slot| slot.neighbors.select(&:unknown?) }
-      .flatten
   end
 
   def pick_random(state)
