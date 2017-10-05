@@ -1,11 +1,14 @@
 class DeepMindPlayer
 
+  attr_accessor :previous_remaining, :history
+
   def self.slot(x, y, val, nb = [])
     Coordinate.new(x, y, val, nb)
   end
 
   class Coordinate
-    attr_reader :x, :y, :state, :neighbors
+    attr_accessor :state
+    attr_reader :x, :y, :neighbors
 
     def initialize(x, y, state, neighbors = [])
       @x = x
@@ -24,6 +27,10 @@ class DeepMindPlayer
 
     def miss?
       state == :miss
+    end
+
+    def sunk?
+      state == :sunk
     end
 
     def occupied?
@@ -49,7 +56,6 @@ class DeepMindPlayer
         []
       else
         size = ships.first
-
         free_down = state.select(&:unknown?).select do |sq|
           sq.y <= size && check_squares_unoccupied(sq.x, sq.y, size, :down, state, buffer.ceil)
         end.map do |sq|
@@ -118,6 +124,7 @@ class DeepMindPlayer
   end
 
   def new_game
+    @history = []
     s = ShipPlacer.place_ships([5, 4, 3, 3, 2], board(10, 10))
     p s
   end
@@ -133,10 +140,35 @@ class DeepMindPlayer
   end
 
   def take_turn(state, ships_remaining)
-    guess(consider_options(state, ships_remaining).first.to_a)
+    if @previous_remaining == nil
+      @previous_remaining = [] + ships_remaining
+    end
+
+    state = zip_coordinates(state)
+    state = update_state(state, (@previous_remaining - ships_remaining).first)
+    @previous_remaining = [] + ships_remaining
+
+    guess(consider_options(state).first.to_a)
   end
 
-  def consider_options(state, ships_remaining)
+  def update_state(state, sunk)
+    if sunk != nil
+      sunk_ship = history.drop(history.length - sunk)
+
+      state.map do |slot|
+        if sunk_ship.include?(slot.to_a)
+          slot.state = :sunk
+          slot
+        else
+          slot
+        end
+      end
+    else
+      state
+    end
+  end
+
+  def consider_options(state)
     if hit_pairs(state).size > 0
       hit_pairs(state)
     elsif hit_neighbors(state).size > 0
@@ -147,39 +179,36 @@ class DeepMindPlayer
   end
 
   def guess(move)
-    p ({ :move => move })
+    @history = @history + [ move ]
+
+    if @history.uniq.size != @history.size
+      puts "WARNING duplicate turns made"
+    end
+
     move
   end
 
-  def rows(state)
-    zip_coordinates(state).group_by(&:y)
-  end
-
-  def columns(state)
-    zip_coordinates(state).group_by(&:x)
-  end
-
   def hit_pairs(state)
-    r = rows(state).map do |_, row|
+    r = state.group_by(&:y).map do |_, row|
       hits = row.select(&:hit?)
       if hits.size > 1
         min = hits.min_by(&:x)
         max = hits.max_by(&:x)
        [
-          create_slot(state, min.x - 1, min.y),
-          create_slot(state, max.x + 1, max.y),
+          state.find { |slot| slot.x == min.x - 1 && slot.y == min.y },
+          state.find { |slot| slot.x == max.x + 1 && slot.y == max.y },
        ].compact.select(&:unknown?)
       end
     end.compact
 
-    c = columns(state).map do |_, col|
+    c = state.group_by(&:x).map do |_, col|
       hits = col.select(&:hit?)
       if hits.size > 1
         min = hits.min_by(&:y)
         max = hits.max_by(&:y)
         [
-          create_slot(state, min.x, min.y - 1),
-          create_slot(state, max.x, max.y + 1),
+          state.find { |slot| slot.x == min.x && slot.y == min.y - 1 },
+          state.find { |slot| slot.x == max.x && slot.y == max.y + 1 },
         ].compact.select(&:unknown?)
       end
     end.compact
@@ -188,14 +217,13 @@ class DeepMindPlayer
   end
 
   def hit_neighbors(state)
-    zip_coordinates(state)
-      .select(&:hit?)
+    state.select(&:hit?)
       .map { |slot| slot.neighbors.select(&:unknown?) }
       .flatten
   end
 
   def pick_random(state)
-    zip_coordinates(state).select(&:odd_slot?).select(&:unknown?).shuffle
+    state.select(&:odd_slot?).select(&:unknown?).shuffle
   end
 
   def zip_coordinates(state)
