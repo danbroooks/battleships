@@ -1,6 +1,6 @@
 class DeepMindPlayer
 
-  attr_accessor :previous_remaining, :history
+  attr_accessor :smallest_ship, :previous_remaining, :history
 
   def self.slot(x, y, val, nb = [])
     Coordinate.new(x, y, val, nb)
@@ -35,10 +35,6 @@ class DeepMindPlayer
 
     def occupied?
       state == :occupied
-    end
-
-    def odd_slot?
-      x % 2 == 0 && y % 2 != 0 || x % 2 != 0 && y % 2 == 0
     end
 
     def to_a
@@ -140,6 +136,8 @@ class DeepMindPlayer
   end
 
   def take_turn(state, ships_remaining)
+    @smallest_ship = ships_remaining.min
+
     if @previous_remaining == nil
       @previous_remaining = [] + ships_remaining
     end
@@ -223,7 +221,7 @@ class DeepMindPlayer
   end
 
   def pick_random(state)
-    state.select(&:odd_slot?).select(&:unknown?).shuffle
+    state.select { |_| (_.x + _.y) % ((@smallest_ship / 2).floor * 2) == 0 }.select(&:unknown?).shuffle
   end
 
   def zip_coordinates(state)
