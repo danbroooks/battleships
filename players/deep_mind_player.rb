@@ -35,12 +35,86 @@ class DeepMindPlayer
     end
   end
 
+  class ShipPlacer
+    def self.place_ships(ships, state)
+      self.new.generate_ships(ships, state)
+    end
+
+    def generate_ships(ships, state, buffer = 4.0)
+      if ships.empty?
+        []
+      else
+        size = ships.first
+
+        free_down = state.select(&:unknown?).select do |sq|
+          sq.y <= size && check_squares_unoccupied(sq.x, sq.y, size, :down, state, buffer.ceil)
+        end.map do |sq|
+          [:down, sq]
+        end
+
+        free_across = state.select(&:unknown?).select do |sq|
+          sq.x <= size && check_squares_unoccupied(sq.x - size, sq.y, size, :across, state, buffer.ceil)
+        end.map do |sq|
+          [:across, sq]
+        end
+
+        available = free_down + free_across
+
+        if available.size > 0
+          direction, square = available.shuffle.first
+          x = square.x
+          y = square.y
+          puts "Added ship of size #{size}, using buffer #{buffer.ceil}"
+          ship = [ x, y, size, direction ]
+          [ship] + generate_ships(ships.drop(1), update_state(x, y, size, direction, state))
+        else
+          puts "Squares occupied between #{x}, #{y}, retrying... (#{buffer.ceil})"
+          generate_ships(ships, state, [0,buffer - 1].max)
+        end
+      end
+    end
+
+    def check_squares_unoccupied(x, y, size, direction, state, buffer)
+      from = [ x - buffer, y - buffer ]
+      to = direction == :down ? [ x + buffer, y + size + buffer ] : [ x + size + buffer, y + buffer ]
+
+      area = state.select do |slot|
+        slot_is_contained_in(from, to, slot)
+      end
+
+      area.select(&:occupied?).size == 0
+    end
+
+    def slot_is_contained_in(from, to, slot)
+      from_x, from_y = from
+      to_x, to_y = to
+
+      [
+        slot.x >= from_x,
+        slot.x <= to_x,
+        slot.y >= from_y,
+        slot.y <= to_y,
+      ].all?
+    end
+
+    def update_state(x, y, size, direction, state)
+      state.map do |slot|
+        if direction == :down   && slot.x == x && slot.y >= y && slot.y < y + size ||
+           direction == :across && slot.y == y && slot.x >= x && slot.x < x + size
+          Coordinate.new(slot.x, slot.y, :occupied)
+        else
+          slot
+        end
+      end
+    end
+  end
+
   def name
     "Deep Mind (╯°□°）╯︵ ┻━┻"
   end
 
   def new_game
-    s = generate_ships([5, 4, 3, 3, 2], board(10, 10))
+    s = ShipPlacer.place_ships([5, 4, 3, 3, 2], board(10, 10))
     p s
   end
 
@@ -52,74 +126,6 @@ class DeepMindPlayer
         end
       end
     )
-  end
-
-  def generate_ships(ships, state, buffer = 4.0)
-    if ships.empty?
-      []
-    else
-      size = ships.first
-
-      free_down = state.select(&:unknown?).select do |sq|
-        sq.y <= size && check_squares_unoccupied(sq.x, sq.y, size, :down, state, buffer.ceil)
-      end.map do |sq|
-        [:down, sq]
-      end
-
-      free_across = state.select(&:unknown?).select do |sq|
-        sq.x <= size && check_squares_unoccupied(sq.x - size, sq.y, size, :across, state, buffer.ceil)
-      end.map do |sq|
-        [:across, sq]
-      end
-
-      available = free_down + free_across
-
-      if available.size > 0
-        direction, square = available.shuffle.first
-        x = square.x
-        y = square.y
-        puts "Added ship of size #{size}, using buffer #{buffer.ceil}"
-        ship = [ x, y, size, direction ]
-        [ship] + generate_ships(ships.drop(1), update_state(x, y, size, direction, state))
-      else
-        puts "Squares occupied between #{x}, #{y}, retrying... (#{buffer.ceil})"
-        generate_ships(ships, state, [0,buffer - 1].max)
-      end
-    end
-  end
-
-  def check_squares_unoccupied(x, y, size, direction, state, buffer)
-    from = [ x - buffer, y - buffer ]
-    to = direction == :down ? [ x + buffer, y + size + buffer ] : [ x + size + buffer, y + buffer ]
-
-    area = state.select do |slot|
-      slot_is_contained_in(from, to, slot)
-    end
-
-    area.select(&:occupied?).size == 0
-  end
-
-  def slot_is_contained_in(from, to, slot)
-    from_x, from_y = from
-    to_x, to_y = to
-
-    [
-      slot.x >= from_x,
-      slot.x <= to_x,
-      slot.y >= from_y,
-      slot.y <= to_y,
-    ].all?
-  end
-
-  def update_state(x, y, size, direction, state)
-    state.map do |slot|
-      if direction == :down   && slot.x == x && slot.y >= y && slot.y < y + size ||
-         direction == :across && slot.y == y && slot.x >= x && slot.x < x + size
-        Coordinate.new(slot.x, slot.y, :occupied)
-      else
-        slot
-      end
-    end
   end
 
   def take_turn(state, ships_remaining)
