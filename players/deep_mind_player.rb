@@ -70,11 +70,9 @@ class DeepMindPlayer
           direction, square = available.shuffle.first
           x = square.x
           y = square.y
-          puts "Added ship of size #{size}, using buffer #{buffer.ceil}"
           ship = [ x, y, size, direction ]
           [ship] + generate_ships(ships.drop(1), update_state(x, y, size, direction, state))
         else
-          puts "Squares occupied between #{x}, #{y}, retrying... (#{buffer.ceil})"
           generate_ships(ships, state, [0,buffer - 1].max)
         end
       end
@@ -121,8 +119,8 @@ class DeepMindPlayer
 
   def new_game
     @history = []
-    s = ShipPlacer.place_ships([5, 4, 3, 3, 2], board(10, 10))
-    p s
+    @sunk = []
+    ShipPlacer.place_ships([5, 4, 3, 3, 2], board(10, 10))
   end
 
   def board(height, width)
@@ -143,26 +141,27 @@ class DeepMindPlayer
     end
 
     state = zip_coordinates(state)
-    state = update_state(state, (@previous_remaining - ships_remaining).first)
+    @history = state.select { |slot| @history.map(&:to_a).include?(slot.to_a) }
+    sunk_ship = (@previous_remaining - ships_remaining).first
+
+    if sunk_ship != nil
+      @sunk = @sunk + @history.select(&:hit?).last(sunk_ship)
+    end
+
+    state = update_state(state, @sunk)
+
     @previous_remaining = [] + ships_remaining
 
-    guess(consider_options(state).first.to_a)
+    guess(consider_options(state).first)
   end
 
   def update_state(state, sunk)
-    if sunk != nil
-      sunk_ship = history.drop(history.length - sunk)
-
-      state.map do |slot|
-        if sunk_ship.include?(slot.to_a)
-          slot.state = :sunk
-          slot
-        else
-          slot
-        end
+    state.map do |slot|
+      if sunk.map(&:to_a).include?(slot.to_a)
+        slot.state = :sunk
       end
-    else
-      state
+
+      slot
     end
   end
 
@@ -183,7 +182,7 @@ class DeepMindPlayer
       puts "WARNING duplicate turns made"
     end
 
-    move
+    move.to_a
   end
 
   def hit_pairs(state)
@@ -216,12 +215,18 @@ class DeepMindPlayer
 
   def hit_neighbors(state)
     state.select(&:hit?)
-      .map { |slot| slot.neighbors.select(&:unknown?) }
+      .map { |_| _.neighbors.select(&:unknown?) }
       .flatten
   end
 
   def pick_random(state)
-    state.select { |_| (_.x + _.y) % ((@smallest_ship / 2).floor * 2) == 0 }.select(&:unknown?).shuffle
+    seek = state.select { |_| (_.x + _.y) % ((@smallest_ship / 2).floor * 2) == 0 }.select(&:unknown?)
+
+    if seek.empty?
+      seek = state.select(&:unknown?)
+    end
+
+    seek.shuffle
   end
 
   def zip_coordinates(state)
