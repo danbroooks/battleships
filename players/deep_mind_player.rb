@@ -134,7 +134,7 @@ class DeepMindPlayer
   end
 
   def take_turn(state, ships_remaining)
-    @smallest_ship = ships_remaining.min
+    @smallest_ship = ships_remaining.max
 
     if @previous_remaining == nil
       @previous_remaining = [] + ships_remaining
