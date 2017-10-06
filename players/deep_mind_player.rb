@@ -243,13 +243,26 @@ class DeepMindPlayer
   end
 
   def pick_random(state)
-    seek = state.select { |_| (_.x + _.y) % ((@smallest_ship / 2).floor * 2) == 0 }.select(&:unknown?)
+    available = state.select(&:unknown?)
 
-    if seek.empty?
-      seek = state.select(&:unknown?)
+    early_game = available.select do |_|
+      [
+        (_.x + (_.y % 4)) % 4 == 0,
+        (_.y - 2) % 3 == 0,
+      ].all?
     end
 
-    seek.shuffle
+    unless early_game.empty?
+      return early_game.shuffle
+    end
+
+    seek = available.select { |_| (_.x + _.y) % ((@smallest_ship / 2).floor * 2) == 0 }.select(&:unknown?)
+
+    unless seek.empty?
+      return seek.shuffle
+    end
+
+    available.select(&:unknown?)
   end
 
   def zip_coordinates(state)
