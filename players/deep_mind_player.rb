@@ -141,8 +141,8 @@ class DeepMindPlayer
     end
 
     state = zip_coordinates(state)
-    @history = state.select { |slot| @history.map(&:to_a).include?(slot.to_a) }
-    sunk_ship = (@previous_remaining - ships_remaining).first
+    @history = sync_history(@history, state, ships_remaining)
+    sunk_ship = diff(@previous_remaining, ships_remaining).first
 
     if sunk_ship != nil
       @sunk = @sunk + @history.select(&:hit?).last(sunk_ship)
@@ -153,6 +153,29 @@ class DeepMindPlayer
     @previous_remaining = [] + ships_remaining
 
     guess(consider_options(state).first)
+  end
+
+  def sync_history(history, state, ships_remaining)
+    history.map do |slot|
+      slot.state = state.find { |_| _.x == slot.x && _.y == slot.y }.state
+      slot
+    end
+  end
+
+  def diff(a = [], b = [])
+    if a.empty?
+      b
+    elsif b.empty?
+      a
+    elsif a.include?(b.first)
+      a.delete_at(a.index(b.first))
+      diff(a, b.drop(1))
+    elsif b.include?(a.first)
+      b.delete_at(b.index(a.first))
+      diff(a.drop(1), b)
+    else
+      [a.first, b.first] + diff(a.drop(1), b.drop(1))
+    end
   end
 
   def update_state(state, sunk)
